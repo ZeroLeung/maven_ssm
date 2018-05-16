@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:aop="http://www.springframework.org/schema/aop"
+       xmlns:p="http://www.springframework.org/schema/p"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xmlns:tx="http://www.springframework.org/schema/tx"
+       xsi:schemaLocation="
+		http://www.springframework.org/schema/beans
+		http://www.springframework.org/schema/beans/spring-beans.xsd
+		http://www.springframework.org/schema/aop
+		http://www.springframework.org/schema/aop/spring-aop.xsd
+		http://www.springframework.org/schema/context
+		http://www.springframework.org/schema/context/spring-context.xsd
+		http://www.springframework.org/schema/tx
+		http://www.springframework.org/schema/tx/spring-tx.xsd">
+	
+		<!-- spring的注解扫描器 -->		
+	<context:component-scan base-package="com.zeroleung.*"/>
+	
+	<!-- 加载database.properties文件 PropertyPlaceholderConfigurer-->
+	<bean class="org.springframework.beans.factory.config.PropertyPlaceholderConfigurer">
+		<property name="location">
+			<value>classpath:database.properties</value>
+		</property>		
+	</bean>
+	
+	<!-- 13.配置数据源dataSource ComboPooledDataSource-->
+	<bean id="dataSource" class="org.apache.commons.dbcp.BasicDataSource">
+		<property name="driverClassName" value="${driverClass}"/>
+		<property name="url" value="${url}"/>
+		<property name="username" value="${username}"/>
+		<property name="password" value="${password}"/>  
+        <property name="initialSize" value="${initialSize}"></property>  
+        <property name="maxActive" value="${maxActive}"></property>   
+        <property name="maxIdle" value="${maxIdle}"></property>   
+        <property name="minIdle" value="${minIdle}"></property>   
+        <property name="maxWait" value="${maxWait}"></property>  
+	</bean>
+	<!-- sqlSessionFactoryBean SqlSessionFactoryBean-->
+	<bean id="sqlSessionFactory" class="org.mybatis.spring.SqlSessionFactoryBean">
+		<property name="dataSource" ref="dataSource"/>
+		<!-- 设置mybatis的加载配置文件 -->
+		<property name="configLocation" value="classpath:mybatis-config.xml"/>
+		<!-- 配置别名 -->
+		<property name="typeAliasesPackage" value="com.zeroleung.domain"/>
+		<!-- 设置映射文件 -->
+		<property name="mapperLocations">
+			<list>
+				<value>classpath:com/zeroleung/mapper/**/*.xml</value>
+			</list>
+		</property>
+	</bean>
+	
+	<!-- 事务管理器 DataSourceTransactionManager-->
+	<bean id="txManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+		<property name="dataSource" ref="dataSource"/>
+	</bean>
+	
+	<!-- 事务规则 -->
+	<tx:advice id="txAdvice" transaction-manager="txManager">
+		<tx:attributes>
+			<!-- CUD -->
+			<tx:method name="tx_*" rollback-for="java.lang.RuntimeException" propagation="REQUIRED"/>
+			<!-- R -->
+			<tx:method name="*" read-only="true" propagation="SUPPORTS"/>
+		</tx:attributes>
+	</tx:advice>
+	
+	<!-- aop -->
+	<aop:config>
+		<aop:pointcut expression="execution(* com.zeroleung.service..*.*(..))" id="txAop"/>
+		<aop:advisor advice-ref="txAdvice" pointcut-ref="txAop"/>
+	</aop:config>
+	
+	<!-- 接口扫描对象 MapperScannerConfigurer-->
+	<bean class="org.mybatis.spring.mapper.MapperScannerConfigurer">
+		<property name="basePackage" value="com.zeroleung.mapper"></property>
+	</bean>
+	</beans>
